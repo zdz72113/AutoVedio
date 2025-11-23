@@ -1,0 +1,13 @@
+{
+    "name": "小狗钱钱模板",
+    "video_size": [1080, 1440],
+    "voice_top": "zh-CN-XiaoshuangNeural",
+    "voice_bottom": "zh-CN-YunjieNeural",
+    "font": "./resource/AlibabaPuHuiTi-3-75-SemiBold.ttf",
+    "text_color": "#2C3E50",
+    "text_bottom_color": "#34495E",
+    "title_color": "#E74C3C",
+    "stroke_color": "#FFFFFF",
+    "stroke_width": 2,
+    "prompt_template": "Generate a complete image prompt for a 3:4 vertical portrait illustration in warm healing children's book style.\n\nOverall Style Requirements:\n- Style: Warm, soft, healing, pastel colors, textured illustration, children's book aesthetic.\n- Composition: Clean, minimal, with focus on characters and core theme elements only.\n- White Space: At least 50% of the entire frame must be empty white space/negative space. Characters occupy no more than 30%.\n\nCRITICAL Requirements:\n1. The image MUST be clearly divided into two distinct sections: upper section (top portion) and lower section (bottom portion). The two sections should be visually separated.\n2. IMPORTANT: The middle horizontal area (approximately 15-20% of the vertical height, centered) must be kept EMPTY or with minimal elements to leave space for title text overlay. Avoid placing important characters or elements in this central area.\n3. Upper Section: This section should visually represent the theme and content of TextTop: '{text_top}'. Characters and elements in this section should be positioned in the upper portion of the frame, above the central empty area.\n4. Lower Section: This section should visually represent the theme and content of TextBottom: '{text_bottom}'. Characters and elements in this section should be positioned in the lower portion of the frame, below the central empty area.\n5. Theme Integration: Each section must visually represent the specific theme/concept from its corresponding text, with subtle symbolic elements.\n6. CRITICAL: The generated image MUST NOT contain any text, words, or characters that repeat or duplicate the content of TextTop or TextBottom. The image should be purely visual, using symbols, objects, and scenes to represent the themes, NOT literal text or words from the dialogue.\n\nCharacter Descriptions:\nUpper Section Character: {prompt_top}\nLower Section Character: {prompt_bottom}\n\nOutput: Only the complete image prompt description, making sure to clearly describe the upper section and lower section separately, and emphasize that the central horizontal area should be kept empty for title text, and that NO text or words should appear in the image."
+}

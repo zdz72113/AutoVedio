@@ -1,0 +1,7 @@
+moviepy>=1.0.3
+volcengine-python-sdk[ark]>=1.0.0
+dashscope>=1.17.0
+openai>=1.0.0
+python-dotenv>=1.0.0
+azure-cognitiveservices-speech>=1.32.0
+
