@@ -1,7 +1,6 @@
 """
 主程序入口
-自动化生成视频流程：文本 -> 提示词 -> 图片 -> 语音 -> 视频
-支持增量处理：如果字段已有值，跳过该步骤
+自动化生成视频流程：输入配置 -> 生成脚本 -> 生成提示词 -> 生成图片 -> 生成语音 -> 生成视频
 """
 import sys
 import os
@@ -10,6 +9,7 @@ from prompt_generator import PromptGenerator
 from image_generator import ImageGenerator
 from voice_generator import generate_audio_for_items
 from utils import (
+    load_input_config,
     load_items_from_json,
     save_items_to_json,
     create_temp_dir,
@@ -18,7 +18,6 @@ from utils import (
     calculate_audio_duration
 )
 from video_generator import VideoGenerator
-from templates import get_template
 
 
 def main(json_file_path):
@@ -26,7 +25,7 @@ def main(json_file_path):
     主流程函数
     
     参数:
-        json_file_path: JSON输入文件路径
+        json_file_path: JSON输入文件路径（包含video_size, images, voice, font等配置）
     """
     print("=" * 60)
     print("开始自动化视频生成流程")
@@ -40,59 +39,76 @@ def main(json_file_path):
         print(f"[错误] {e}")
         return
     
-    # 2. 加载项目列表和模板
+    # 2. 加载输入配置
     try:
-        items, template_name = load_items_from_json(json_file_path)
-        if not items:
-            print("[错误] JSON文件中没有有效的项目")
-            return
-        
-        # 获取模板配置
-        template = get_template(template_name)
-        print(f"[配置] 使用模板: {template['name']} ({template_name})")
+        config = load_input_config(json_file_path)
+        print(f"[配置] 项目名称: {config['name']}")
+        print(f"[配置] 图片数量: {config['images']}")
+        print(f"[配置] 视频尺寸: {config['video_size']}")
     except Exception as e:
-        print(f"[错误] 加载JSON文件失败: {e}")
+        print(f"[错误] 加载输入配置失败: {e}")
         return
     
-    # 3. 创建临时目录（基于JSON文件名）
-    temp_dir = create_temp_dir(json_file_path)
+    # 3. 创建临时目录（基于name字段）
+    temp_dir = create_temp_dir(config['name'])
     image_dir = os.path.join(temp_dir, "images")
     audio_dir = os.path.join(temp_dir, "audio")
+    output_json_path = os.path.join(temp_dir, f"{config['name']}.json")
     
-    # 4. 生成提示词
+    # 4. 生成视频脚本（包含title和subtitle）
     print("\n" + "=" * 60)
-    print("步骤 1/6: 生成提示词")
+    print("步骤 1/6: 生成视频脚本")
     print("=" * 60)
     prompt_gen = PromptGenerator()
     
-    # 为每段文本生成图片提示词（跳过已有Prompt的项目），传入模板配置
-    prompt_gen.generate_image_prompts(items, template)
+    # 检查是否已有生成的JSON文件
+    items = []
+    if os.path.exists(output_json_path):
+        try:
+            items = load_items_from_json(output_json_path)
+            print(f"[脚本] 从已有JSON文件加载了 {len(items)} 个项目")
+        except:
+            pass
     
-    # 保存更新后的JSON（保留template和items字段）
-    save_items_to_json(items, json_file_path, template_name=template_name)
+    # 如果没有已有数据，生成新的脚本
+    if not items or len(items) != config['images']:
+        items = prompt_gen.generate_video_script(config['text'], config['images'])
+        # 保存初始脚本
+        save_items_to_json(items, output_json_path)
     
-    # 5. 生成图片（跳过已有Image的项目）
+    # 5. 生成图片提示词
     print("\n" + "=" * 60)
-    print("步骤 2/6: 生成图片")
+    print("步骤 2/6: 生成图片提示词")
+    print("=" * 60)
+    prompt_gen.generate_image_prompts(items)
+    save_items_to_json(items, output_json_path)
+    
+    # 6. 生成图片
+    print("\n" + "=" * 60)
+    print("步骤 3/6: 生成图片")
     print("=" * 60)
     image_gen = ImageGenerator()
-    image_gen.generate_images_batch(items, image_dir, template=template)
     
-    # 保存更新后的JSON（保留template和items字段）
-    save_items_to_json(items, json_file_path, template_name=template_name)
+    # 准备视频尺寸用于图片生成
+    video_size = config['video_size']
+    if isinstance(video_size, list):
+        image_size = f"{video_size[0]}x{video_size[1]}"
+    else:
+        image_size = "1080x1920"
     
-    # 6. 生成语音（跳过已有audio的项目）
+    image_gen.generate_images_batch(items, image_dir, image_size=image_size)
+    save_items_to_json(items, output_json_path)
+    
+    # 7. 生成语音
     print("\n" + "=" * 60)
-    print("步骤 3/6: 生成语音")
+    print("步骤 4/6: 生成语音")
     print("=" * 60)
-    generate_audio_for_items(items, template, audio_dir)
+    generate_audio_for_items(items, config['voice'], audio_dir)
+    save_items_to_json(items, output_json_path)
     
-    # 保存更新后的JSON（保留template和items字段）
-    save_items_to_json(items, json_file_path, template_name=template_name)
-    
-    # 7. 计算时长并更新到items中
+    # 8. 计算时长并更新到items中
     print("\n" + "=" * 60)
-    print("步骤 4/6: 计算时长")
+    print("步骤 5/6: 计算时长")
     print("=" * 60)
     for i, item in enumerate(items):
         if item.get('audio') and (not item.get('duration') or item.get('duration') == 0):
@@ -104,12 +120,11 @@ def main(json_file_path):
                 item['duration'] = 3.0  # 默认时长
                 print(f"[时长计算] 第 {i+1} 项：使用默认时长 3.0 秒")
     
-    # 保存更新后的JSON（保留template和items字段）
-    save_items_to_json(items, json_file_path, template_name=template_name)
+    save_items_to_json(items, output_json_path)
     
-    # 8. 生成幻灯片列表
+    # 9. 生成幻灯片列表
     print("\n" + "=" * 60)
-    print("步骤 5/6: 生成幻灯片列表")
+    print("步骤 6/6: 生成视频")
     print("=" * 60)
     try:
         slides = generate_slide_list_from_items(items)
@@ -120,24 +135,23 @@ def main(json_file_path):
         print(f"[错误] 生成幻灯片列表失败: {e}")
         return
     
-    # 9. 生成视频
-    print("\n" + "=" * 60)
-    print("步骤 6/6: 合成视频")
-    print("=" * 60)
-    # 从模板获取视频尺寸、字体和文字颜色配置
-    video_size = template.get('video_size', (1080, 1920))  # 默认9:16
+    # 10. 生成视频
+    video_size = config['video_size']
     if isinstance(video_size, list):
         video_size = tuple(video_size)
+    else:
+        video_size = (1080, 1920)
+    
     video_gen = VideoGenerator(
-        font_path=template['font'],
+        font_path=config['font'],
         video_size=video_size,
-        text_color=template['text_color'],
-        text_bottom_color=template['text_bottom_color'],
-        title_color=template.get('title_color', '#E74C3C'),
-        stroke_color=template['stroke_color'],
-        stroke_width=template['stroke_width']
+        text_color=config['font_color'],
+        title_color=config['font_color'],
+        stroke_color="#FFFFFF",
+        stroke_width=2,
+        font_size=config['font_size']
     )
-    output_file = generate_output_filename(json_file_path, temp_dir=temp_dir)
+    output_file = generate_output_filename(config['name'], temp_dir)
     
     try:
         video_gen.create_video(slides, output_file)
@@ -145,14 +159,14 @@ def main(json_file_path):
         print(f"[错误] 生成视频失败: {e}")
         return
     
-    # 10. 完成
+    # 11. 完成
     print("\n" + "=" * 60)
     print("完成")
     print("=" * 60)
     print(f"\n✅ 视频生成完成！")
     print(f"📁 输出文件: {output_file}")
     print(f"📁 临时文件: {temp_dir}")
-    print(f"📁 JSON文件已更新: {json_file_path}")
+    print(f"📁 JSON文件: {output_json_path}")
     print("\n" + "=" * 60)
 
 

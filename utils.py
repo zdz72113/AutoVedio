@@ -6,100 +6,95 @@ import os
 from moviepy import AudioFileClip, concatenate_audioclips
 
 
-def load_items_from_json(json_file_path):
+def load_input_config(json_file_path):
     """
-    从JSON文件加载项目列表
+    从JSON文件加载输入配置（新格式）
     
     参数:
         json_file_path: JSON文件路径
     
     返回:
-        tuple: (items列表, template_name)
+        dict: 配置字典，包含 video_size, images, voice, font, font_color, font_size, name, text
     """
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # 只支持包含template和items字段的对象格式
         if not isinstance(data, dict):
-            raise ValueError("JSON格式错误：必须是包含template和items字段的对象")
+            raise ValueError("JSON格式错误：必须是对象格式")
         
-        if 'items' not in data:
-            raise ValueError("JSON格式错误：对象必须包含'items'字段")
+        # 验证必需字段
+        required_fields = ['video_size', 'iamges', 'voice', 'font', 'font_color', 'font_size', 'name', 'text']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValueError(f"JSON格式错误：缺少必需字段: {', '.join(missing_fields)}")
         
-        items = data['items']
-        template_name = data.get('template', 'default')
+        # 处理images字段（兼容拼写错误iamges）
+        images_count = data.get('iamges') or data.get('images', 0)
+        
+        config = {
+            'video_size': data['video_size'],
+            'images': images_count,
+            'voice': data['voice'],
+            'font': data['font'],
+            'font_color': data['font_color'],
+            'font_size': data['font_size'],
+            'name': data['name'],
+            'text': data['text']
+        }
+        
+        print(f"[工具] 从 {json_file_path} 加载配置: name={config['name']}, images={config['images']}")
+        return config
+    except Exception as e:
+        print(f"[工具] 加载输入配置失败: {e}")
+        raise
+
+
+def load_items_from_json(json_file_path):
+    """
+    从JSON文件加载项目列表（数组格式）
+    
+    参数:
+        json_file_path: JSON文件路径
+    
+    返回:
+        list: items列表
+    """
+    try:
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # 支持数组格式
+        if isinstance(data, list):
+            items = data
+        elif isinstance(data, dict) and 'items' in data:
+            # 兼容旧格式
+            items = data['items']
+        else:
+            raise ValueError("JSON格式错误：必须是数组或包含items字段的对象")
         
         if not isinstance(items, list):
             raise ValueError("JSON格式错误：items应该是数组")
         
-        # 验证每个item
-        valid_items = []
-        for i, item in enumerate(items):
-            if not isinstance(item, dict):
-                print(f"[警告] 第 {i+1} 项不是对象，已跳过")
-                continue
-            
-            # 必须要有TextTop或TextBottom
-            if not item.get('TextTop') and not item.get('TextBottom'):
-                print(f"[警告] 第 {i+1} 项缺少TextTop和TextBottom字段，已跳过")
-                continue
-            
-            # 确保字段存在（可能为空）
-            if 'TextTop' not in item:
-                item['TextTop'] = None
-            if 'TextBottom' not in item:
-                item['TextBottom'] = None
-            
-            # 确保其他字段存在（初始化为None）
-            if 'Prompt' not in item:
-                item['Prompt'] = None
-            if 'Image' not in item:
-                item['Image'] = None
-            if 'audio' not in item:
-                item['audio'] = None
-            if 'duration' not in item:
-                item['duration'] = None
-            
-            valid_items.append(item)
-        
-        print(f"[工具] 从 {json_file_path} 加载了 {len(valid_items)} 个项目，使用模板: {template_name}")
-        return valid_items, template_name
+        print(f"[工具] 从 {json_file_path} 加载了 {len(items)} 个项目")
+        return items
     except Exception as e:
         print(f"[工具] 加载JSON文件失败: {e}")
         raise
 
 
-def save_items_to_json(items, json_file_path, template_name=None):
+def save_items_to_json(items, json_file_path):
     """
-    保存项目列表到JSON文件，保留template和items字段格式
+    保存项目列表到JSON文件（数组格式）
     
     参数:
         items: 项目列表
         json_file_path: JSON文件路径
-        template_name: 模板名称，如果为None则尝试从原文件读取
     """
     try:
-        # 如果template_name为None，尝试从原文件读取
-        if template_name is None:
-            try:
-                with open(json_file_path, 'r', encoding='utf-8') as f:
-                    original_data = json.load(f)
-                if isinstance(original_data, dict) and 'template' in original_data:
-                    template_name = original_data.get('template', 'default')
-                else:
-                    template_name = 'default'
-            except:
-                template_name = 'default'
-        
-        # 构建保存的数据结构，保留template和items字段
-        data_to_save = {
-            "template": template_name,
-            "items": items
-        }
-        
+        # 直接保存为数组格式
         with open(json_file_path, 'w', encoding='utf-8') as f:
-            json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+            json.dump(items, f, ensure_ascii=False, indent=2)
         print(f"[工具] 已保存更新后的JSON到: {json_file_path}")
     except Exception as e:
         print(f"[工具] 保存JSON文件失败: {e}")
@@ -162,10 +157,10 @@ def generate_slide_list_from_items(items):
     从items生成幻灯片列表，包括图片、语音、字幕和时长
     
     参数:
-        items: 项目列表，每个项目包含 TextTop, TextBottom, Text, Image, audio, duration 等字段
+        items: 项目列表，每个项目包含 title, subtitle, Image, audio, duration 等字段
     
     返回:
-        list: 幻灯片列表，每个元素包含 image, audio, text_top, text_bottom, duration
+        list: 幻灯片列表，每个元素包含 image, audio, title, subtitle, duration
     """
     slides = []
     for i, item in enumerate(items):
@@ -185,9 +180,8 @@ def generate_slide_list_from_items(items):
         slides.append({
             "image": item['Image'],
             "audio": item['audio'],
-            "text_top": item.get('TextTop', ''),
-            "text_bottom": item.get('TextBottom', ''),
-            "title": item.get('Title', ''),
+            "title": item.get('title', ''),
+            "subtitle": item.get('subtitle', ''),
             "duration": duration
         })
         
@@ -196,20 +190,18 @@ def generate_slide_list_from_items(items):
     return slides
 
 
-def create_temp_dir(json_file_path, base_dir="temp"):
+def create_temp_dir(name, base_dir="temp"):
     """
-    基于JSON文件名创建临时目录
+    基于name创建临时目录
     
     参数:
-        json_file_path: JSON文件路径
+        name: 项目名称
         base_dir: 基础目录名
     
     返回:
         str: 创建的临时目录路径
     """
-    # 获取JSON文件名（不含扩展名）作为临时文件夹名
-    json_name = os.path.splitext(os.path.basename(json_file_path))[0]
-    temp_dir = os.path.join(base_dir, json_name)
+    temp_dir = os.path.join(base_dir, name)
     os.makedirs(temp_dir, exist_ok=True)
     os.makedirs(os.path.join(temp_dir, "images"), exist_ok=True)
     os.makedirs(os.path.join(temp_dir, "audio"), exist_ok=True)
@@ -217,28 +209,23 @@ def create_temp_dir(json_file_path, base_dir="temp"):
     return temp_dir
 
 
-def generate_output_filename(json_file_path, temp_dir=None):
+def generate_output_filename(name, temp_dir):
     """
-    基于JSON文件名和当前时间生成输出文件名，保存到temp目录下
+    基于name和当前时间生成输出文件名，保存到temp目录下
     
     参数:
-        json_file_path: JSON文件路径
-        temp_dir: 临时目录路径，如果为None则基于JSON文件名创建
+        name: 项目名称
+        temp_dir: 临时目录路径
     
     返回:
         str: 输出文件名（完整路径）
     """
     from datetime import datetime
-    base_name = os.path.splitext(os.path.basename(json_file_path))[0]
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # 如果提供了temp_dir，使用它；否则基于JSON文件名创建
-    if temp_dir is None:
-        temp_dir = create_temp_dir(json_file_path)
     
     # 确保temp_dir存在
     os.makedirs(temp_dir, exist_ok=True)
     
-    filename = f"{base_name}_{timestamp}.mp4"
+    filename = f"{name}_{timestamp}.mp4"
     return os.path.join(temp_dir, filename)
 

@@ -2,15 +2,15 @@
 视频生成模块
 使用MoviePy合成视频
 """
-from moviepy import ImageClip, TextClip, CompositeVideoClip, AudioFileClip, concatenate_videoclips
+from moviepy import ImageClip, TextClip, CompositeVideoClip, AudioFileClip, concatenate_videoclips, ColorClip
 import re
 
 
 class VideoGenerator:
     """视频生成器"""
     
-    def __init__(self, font_path="./resource/AlibabaPuHuiTi-3-75-SemiBold.ttf", fps=18, video_size=(1080, 1920),
-                 text_color="#2C3E50", text_bottom_color="#34495E", title_color="#E74C3C", stroke_color="#FFFFFF", stroke_width=2):
+    def __init__(self, font_path="./resource/AlibabaPuHuiTi-3-75-SemiBold.ttf", fps=10, video_size=(1080, 1920),
+                 text_color="#2C3E50", text_bottom_color="#34495E", title_color="#E74C3C", stroke_color="#FFFFFF", stroke_width=2, font_size=50):
         """
         初始化视频生成器
         
@@ -18,20 +18,25 @@ class VideoGenerator:
             font_path: 字体文件路径
             fps: 视频帧率
             video_size: 视频尺寸 (width, height)，默认1080x1920
-            text_color: 顶部文字颜色
-            text_bottom_color: 底部文字颜色
+            text_color: 文字颜色
+            text_bottom_color: 底部文字颜色（保留兼容性）
             title_color: 标题文字颜色
             stroke_color: 文字描边颜色
             stroke_width: 文字描边宽度
+            font_size: 字体大小
         """
         self.font_path = font_path
         self.fps = fps
         self.video_size = video_size
-        self.text_color = text_color
+        # 字幕使用白色文字和黑色描边以提高对比度
+        self.text_color = "#FFFFFF"  # 白色文字更突出
         self.text_bottom_color = text_bottom_color
-        self.title_color = title_color
-        self.stroke_color = stroke_color
-        self.stroke_width = stroke_width
+        self.title_color = "#FFFFFF"  # 标题也使用白色
+        self.stroke_color = "#000000"  # 黑色描边，与白色文字形成强烈对比
+        self.stroke_width = 5  # 描边宽度
+        self.font_size = font_size
+        self.bg_opacity = 0.7  # 背景不透明度
+        self.bg_padding = 20  # 背景内边距
     
     def _format_text_for_display(self, text, max_chars_per_line=15):
         """
@@ -110,69 +115,80 @@ class VideoGenerator:
             if img_clip.w != self.video_size[0] or img_clip.h != self.video_size[1]:
                 img_clip = img_clip.resized(self.video_size)
             
-            # 创建顶部文字剪辑
-            text_top = slide.get("text_top", "")
-            text_bottom = slide.get("text_bottom", "")
+            # 创建文字剪辑
             title = slide.get("title", "")
+            subtitle = slide.get("subtitle", "")
             
             clips_to_composite = [img_clip]
             
             # 文本区域宽度（留出左右边距）
             text_area_width = self.video_size[0] - 100  # 左右各留50像素边距
             
-            # 如果存在Title，显示在中间
+            # 如果存在title，显示在顶部
             if title:
-                title_clip = TextClip(
-                    text=title,
+                formatted_title = self._format_text_for_display(title, max_chars_per_line=20)
+                title_text_clip = TextClip(
+                    text=formatted_title,
                     font=self.font_path,
-                    font_size=80,
-                    color=self.title_color,
-                    stroke_color=self.stroke_color,
-                    stroke_width=self.stroke_width,
+                    font_size=int(self.font_size * 1.2),  # 标题字体稍大
+                    color="#FFFFFF",  # 白色文字
+                    stroke_color="#000000",  # 黑色描边
+                    stroke_width=self.stroke_width,  # 使用配置的描边宽度
                     method='caption',
                     size=(text_area_width, None)
                 ).with_duration(slide["duration"])
-                # 标题位置：水平居中，垂直居中
-                title_y = (self.video_size[1] - title_clip.h) / 2
-                title_clip = title_clip.with_position(("center", title_y))
-                clips_to_composite.append(title_clip)
+                
+                # 创建半透明背景
+                title_bg = ColorClip(
+                    size=(title_text_clip.w + self.bg_padding * 2, title_text_clip.h + self.bg_padding * 2),
+                    color=(0, 0, 0),  # 黑色背景
+                    duration=slide["duration"]
+                ).with_opacity(self.bg_opacity)  # 半透明背景
+                
+                # 将文字叠加在背景上
+                title_composite = CompositeVideoClip([
+                    title_bg.with_position(("center", "center")),
+                    title_text_clip.with_position(("center", "center"))
+                ], size=(title_bg.w, title_bg.h))
+                
+                # 标题位置：水平居中，距离顶部有一定边距
+                title_composite = title_composite.with_position(("center", 30))
+                clips_to_composite.append(title_composite)
             
-            if text_top:
+            # 如果存在subtitle，显示在底部
+            if subtitle:
                 # 格式化文本，支持换行
-                formatted_text_top = self._format_text_for_display(text_top, max_chars_per_line=20)
-                text_top_clip = TextClip(
-                    text=formatted_text_top,
+                formatted_subtitle = self._format_text_for_display(subtitle, max_chars_per_line=20)
+                subtitle_text_clip = TextClip(
+                    text=formatted_subtitle,
                     font=self.font_path,
-                    font_size=60,
-                    color=self.text_color,
-                    stroke_color=self.stroke_color,
-                    stroke_width=self.stroke_width,
+                    font_size=self.font_size,
+                    color="#FFFFFF",  # 白色文字
+                    stroke_color="#000000",  # 黑色描边
+                    stroke_width=self.stroke_width,  # 使用配置的描边宽度
                     method='caption',  # 使用caption方法支持自动换行
                     size=(text_area_width, None)  # 指定宽度，高度自动计算
                 ).with_duration(slide["duration"])
-                # 顶部文字位置：水平居中，距离顶部有一定边距
-                text_top_clip = text_top_clip.with_position(("center", 30))
-                clips_to_composite.append(text_top_clip)
-            
-            if text_bottom:
-                # 格式化文本，支持换行
-                formatted_text_bottom = self._format_text_for_display(text_bottom, max_chars_per_line=20)
-                text_bottom_clip = TextClip(
-                    text=formatted_text_bottom,
-                    font=self.font_path,
-                    font_size=60,
-                    color=self.text_bottom_color,
-                    stroke_color=self.stroke_color,
-                    stroke_width=self.stroke_width,
-                    method='caption',  # 使用caption方法支持自动换行
-                    size=(text_area_width, None)  # 指定宽度，高度自动计算
-                ).with_duration(slide["duration"])
-                # 底部文字位置：水平居中，距离底部有一定边距
+                
+                # 创建半透明背景
+                subtitle_bg = ColorClip(
+                    size=(subtitle_text_clip.w + self.bg_padding * 2, subtitle_text_clip.h + self.bg_padding * 2),
+                    color=(0, 0, 0),  # 黑色背景
+                    duration=slide["duration"]
+                ).with_opacity(self.bg_opacity)  # 半透明背景
+                
+                # 将文字叠加在背景上
+                subtitle_composite = CompositeVideoClip([
+                    subtitle_bg.with_position(("center", "center")),
+                    subtitle_text_clip.with_position(("center", "center"))
+                ], size=(subtitle_bg.w, subtitle_bg.h))
+                
+                # 字幕位置：水平居中，距离底部有一定边距
                 bottom_margin = 30
                 # 计算底部位置（需要先获取clip的高度）
-                bottom_y = self.video_size[1] - text_bottom_clip.h - bottom_margin
-                text_bottom_clip = text_bottom_clip.with_position(("center", bottom_y))
-                clips_to_composite.append(text_bottom_clip)
+                bottom_y = self.video_size[1] - subtitle_composite.h - bottom_margin
+                subtitle_composite = subtitle_composite.with_position(("center", bottom_y))
+                clips_to_composite.append(subtitle_composite)
             
             # 加载音频剪辑
             audio_clip = AudioFileClip(slide["audio"])

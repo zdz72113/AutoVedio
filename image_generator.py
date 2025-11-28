@@ -52,28 +52,19 @@ class ImageGenerator:
             print(f"[图片生成] 生成图片失败: {e}")
             return None
     
-    def generate_images_batch(self, items, output_dir, template=None):
+    def generate_images_batch(self, items, output_dir, image_size="1080x1920"):
         """
         批量生成图片，并更新到items中
         
         参数:
             items: 项目列表，每个项目包含 Prompt, Image 等字段
             output_dir: 输出目录
-            template: 模板配置字典，包含 video_size
+            image_size: 图片尺寸，格式为 "宽x高"，例如 "1080x1920" 或 "1080x1440"
         
         返回:
             无，直接更新items中的Image字段
         """
         os.makedirs(output_dir, exist_ok=True)
-        
-        # 从模板获取图片尺寸
-        image_size = "1080x1920"  # 默认尺寸
-        if template and 'video_size' in template:
-            video_size = template['video_size']
-            if isinstance(video_size, (list, tuple)) and len(video_size) >= 2:
-                image_size = f"{video_size[0]}x{video_size[1]}"
-            elif isinstance(video_size, str):
-                image_size = video_size
         
         for i, item in enumerate(items):
             # 如果已有Image，跳过

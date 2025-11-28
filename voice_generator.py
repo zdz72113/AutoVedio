@@ -61,66 +61,34 @@ def text_to_speech(text, output_file, voice_name=None):
         raise Exception(f"语音合成失败: {result.reason}")
 
 
-def generate_audio_for_items(items, template, audio_dir):
+def generate_audio_for_items(items, voice_name, audio_dir):
     """
-    为items生成语音，基于TextTop和TextBottom
+    为items生成语音，基于subtitle字段
     
     参数:
-        items: 项目列表
-        template: 模板配置，包含 voice_top 和 voice_bottom
+        items: 项目列表，每个项目包含 subtitle 字段
+        voice_name: 语音名称（从input配置中获取）
         audio_dir: 音频文件保存目录
     """
-    voice_top = template.get('voice_top', 'zh-CN-XiaoxiaoNeural')
-    voice_bottom = template.get('voice_bottom', 'zh-CN-YunxiNeural')
-    
     for i, item in enumerate(items):
         # 如果已有audio，跳过
         if item.get('audio'):
             print(f"[语音生成] 第 {i+1}/{len(items)} 项已有音频，跳过")
             continue
         
-        text_top = item.get('TextTop', '') or ''
-        text_bottom = item.get('TextBottom', '') or ''
+        subtitle = item.get('subtitle', '') or ''
         
-        if not text_top and not text_bottom:
-            print(f"[警告] 第 {i+1} 项缺少TextTop和TextBottom，跳过语音生成")
+        if not subtitle:
+            print(f"[警告] 第 {i+1} 项缺少subtitle，跳过语音生成")
             continue
         
         audio_file = os.path.join(audio_dir, f"audio_{i+1}.mp3")
         
         try:
-            # 如果上下都有文本，分别生成并合并
-            if text_top and text_bottom:
-                audio_top_file = os.path.join(audio_dir, f"audio_{i+1}_top.mp3")
-                audio_bottom_file = os.path.join(audio_dir, f"audio_{i+1}_bottom.mp3")
-                
-                # 生成上半部分语音
-                text_to_speech(text_top, audio_top_file, voice_name=voice_top)
-                # 生成下半部分语音
-                text_to_speech(text_bottom, audio_bottom_file, voice_name=voice_bottom)
-                
-                # 合并语音
-                merge_audio_files([audio_top_file, audio_bottom_file], audio_file)
-                
-                # 清理临时文件
-                try:
-                    os.remove(audio_top_file)
-                    os.remove(audio_bottom_file)
-                except:
-                    pass
-                
-                item['audio'] = audio_file
-                print(f"[语音生成] 第 {i+1}/{len(items)} 段语音已生成（合并 voice_top 和 voice_bottom）")
-            elif text_top:
-                # 只有上半部分
-                text_to_speech(text_top, audio_file, voice_name=voice_top)
-                item['audio'] = audio_file
-                print(f"[语音生成] 第 {i+1}/{len(items)} 段语音已生成（使用 voice_top）")
-            elif text_bottom:
-                # 只有下半部分
-                text_to_speech(text_bottom, audio_file, voice_name=voice_bottom)
-                item['audio'] = audio_file
-                print(f"[语音生成] 第 {i+1}/{len(items)} 段语音已生成（使用 voice_bottom）")
+            # 生成语音
+            text_to_speech(subtitle, audio_file, voice_name=voice_name)
+            item['audio'] = audio_file
+            print(f"[语音生成] 第 {i+1}/{len(items)} 段语音已生成")
         except Exception as e:
             print(f"[错误] 生成第 {i+1} 段语音失败: {e}")
             continue
