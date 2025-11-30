@@ -145,10 +145,6 @@ def main(json_file_path):
     video_gen = VideoGenerator(
         font_path=config['font'],
         video_size=video_size,
-        text_color=config['font_color'],
-        title_color=config['font_color'],
-        stroke_color="#FFFFFF",
-        stroke_width=2,
         font_size=config['font_size']
     )
     output_file = generate_output_filename(config['name'], temp_dir)

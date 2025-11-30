@@ -3,7 +3,6 @@
 import os
 import azure.cognitiveservices.speech as speechsdk
 from config import Config
-from utils import merge_audio_files
 
 
 def text_to_speech(text, output_file, voice_name=None):

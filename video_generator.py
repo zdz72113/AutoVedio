@@ -3,14 +3,13 @@
 使用MoviePy合成视频
 """
 from moviepy import ImageClip, TextClip, CompositeVideoClip, AudioFileClip, concatenate_videoclips, ColorClip
-import re
 
 
 class VideoGenerator:
     """视频生成器"""
     
     def __init__(self, font_path="./resource/AlibabaPuHuiTi-3-75-SemiBold.ttf", fps=10, video_size=(1080, 1920),
-                 text_color="#2C3E50", text_bottom_color="#34495E", title_color="#E74C3C", stroke_color="#FFFFFF", stroke_width=2, font_size=50):
+                 font_size=50, stroke_width=5, bg_opacity=0.7, bg_padding=20):
         """
         初始化视频生成器
         
@@ -18,57 +17,31 @@ class VideoGenerator:
             font_path: 字体文件路径
             fps: 视频帧率
             video_size: 视频尺寸 (width, height)，默认1080x1920
-            text_color: 文字颜色
-            text_bottom_color: 底部文字颜色（保留兼容性）
-            title_color: 标题文字颜色
-            stroke_color: 文字描边颜色
-            stroke_width: 文字描边宽度
             font_size: 字体大小
+            stroke_width: 文字描边宽度
+            bg_opacity: 背景不透明度（0-1）
+            bg_padding: 背景内边距（像素）
         """
         self.font_path = font_path
         self.fps = fps
         self.video_size = video_size
-        # 字幕使用白色文字和黑色描边以提高对比度
-        self.text_color = "#FFFFFF"  # 白色文字更突出
-        self.text_bottom_color = text_bottom_color
-        self.title_color = "#FFFFFF"  # 标题也使用白色
-        self.stroke_color = "#000000"  # 黑色描边，与白色文字形成强烈对比
-        self.stroke_width = 5  # 描边宽度
         self.font_size = font_size
-        self.bg_opacity = 0.7  # 背景不透明度
-        self.bg_padding = 20  # 背景内边距
+        self.stroke_width = stroke_width
+        self.bg_opacity = bg_opacity
+        self.bg_padding = bg_padding
     
-    def _format_text_for_display(self, text, max_chars_per_line=15):
+    def _format_text_for_display(self, text):
         """
-        格式化文本以便显示，支持自动换行
+        格式化文本以便显示
         
         参数:
             text: 原始文本
-            max_chars_per_line: 每行最大字符数（用于自动换行）
         
         返回:
-            str: 格式化后的文本（包含换行符）
+            str: 格式化后的文本
         """
         if not text:
             return ""
-        
-        # 如果文本中已经包含换行符，直接使用
-        if '\n' in text:
-            return text
-        
-        # 如果文本长度超过限制，按字符数强制换行
-        # if len(text) > max_chars_per_line:
-        #     lines = []
-        #     current_line = ""
-        #     for char in text:
-        #         current_line += char
-        #         if len(current_line) >= max_chars_per_line:
-        #             lines.append(current_line)
-        #             current_line = ""
-        #     if current_line:
-        #         lines.append(current_line)
-        #     text = '\n'.join(lines)
-        
         return text
     
     def create_video(self, slides, output_file):
@@ -126,24 +99,24 @@ class VideoGenerator:
             
             # 如果存在title，显示在顶部
             if title:
-                formatted_title = self._format_text_for_display(title, max_chars_per_line=20)
+                formatted_title = self._format_text_for_display(title)
                 title_text_clip = TextClip(
                     text=formatted_title,
                     font=self.font_path,
-                    font_size=int(self.font_size * 1.2),  # 标题字体稍大
-                    color="#FFFFFF",  # 白色文字
-                    stroke_color="#000000",  # 黑色描边
-                    stroke_width=self.stroke_width,  # 使用配置的描边宽度
+                    font_size=int(self.font_size * 1.4),  # 标题字体稍大
+                    color="#FF6600",  # 亮金色文字，更醒目
+                    stroke_color="#FFFFFF",  # 白色描边，增强对比度
+                    stroke_width=self.stroke_width,  # 加粗描边
                     method='caption',
                     size=(text_area_width, None)
                 ).with_duration(slide["duration"])
                 
-                # 创建半透明背景
+                # 创建半透明深色背景，增强对比度
                 title_bg = ColorClip(
                     size=(title_text_clip.w + self.bg_padding * 2, title_text_clip.h + self.bg_padding * 2),
-                    color=(0, 0, 0),  # 黑色背景
+                    color=(20, 20, 20),  # 深灰色背景，比纯黑更柔和
                     duration=slide["duration"]
-                ).with_opacity(self.bg_opacity)  # 半透明背景
+                ).with_opacity(0.8)  # 稍微提高不透明度，使背景更明显
                 
                 # 将文字叠加在背景上
                 title_composite = CompositeVideoClip([
@@ -157,8 +130,7 @@ class VideoGenerator:
             
             # 如果存在subtitle，显示在底部
             if subtitle:
-                # 格式化文本，支持换行
-                formatted_subtitle = self._format_text_for_display(subtitle, max_chars_per_line=20)
+                formatted_subtitle = self._format_text_for_display(subtitle)
                 subtitle_text_clip = TextClip(
                     text=formatted_subtitle,
                     font=self.font_path,

@@ -8,7 +8,7 @@ from moviepy import AudioFileClip, concatenate_audioclips
 
 def load_input_config(json_file_path):
     """
-    从JSON文件加载输入配置（新格式）
+    从JSON文件加载输入配置
     
     参数:
         json_file_path: JSON文件路径
@@ -64,20 +64,11 @@ def load_items_from_json(json_file_path):
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # 支持数组格式
-        if isinstance(data, list):
-            items = data
-        elif isinstance(data, dict) and 'items' in data:
-            # 兼容旧格式
-            items = data['items']
-        else:
-            raise ValueError("JSON格式错误：必须是数组或包含items字段的对象")
+        if not isinstance(data, list):
+            raise ValueError("JSON格式错误：必须是数组格式")
         
-        if not isinstance(items, list):
-            raise ValueError("JSON格式错误：items应该是数组")
-        
-        print(f"[工具] 从 {json_file_path} 加载了 {len(items)} 个项目")
-        return items
+        print(f"[工具] 从 {json_file_path} 加载了 {len(data)} 个项目")
+        return data
     except Exception as e:
         print(f"[工具] 加载JSON文件失败: {e}")
         raise
@@ -85,7 +76,7 @@ def load_items_from_json(json_file_path):
 
 def save_items_to_json(items, json_file_path):
     """
-    保存项目列表到JSON文件（数组格式）
+    保存项目列表到JSON文件
     
     参数:
         items: 项目列表

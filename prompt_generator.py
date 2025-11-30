@@ -81,27 +81,7 @@ class PromptGenerator:
             
         except Exception as e:
             print(f"[脚本生成] 生成视频脚本失败: {e}")
-            # 如果生成失败，使用简单分割方式
-            print("[脚本生成] 使用备用方案：简单分割文本")
-            return self._fallback_script_generation(text, num_segments)
-    
-    def _fallback_script_generation(self, text, num_segments):
-        """备用方案：简单分割文本"""
-        items = []
-        words_per_segment = max(10, len(text) // num_segments)
-        
-        for i in range(num_segments):
-            start_idx = i * words_per_segment
-            end_idx = (i + 1) * words_per_segment if i < num_segments - 1 else len(text)
-            segment_text = text[start_idx:end_idx].strip()
-            
-            if segment_text:
-                items.append({
-                    "title": f"第{i+1}段",
-                    "subtitle": segment_text
-                })
-        
-        return items
+
     
     def generate_image_prompts(self, items):
         """
@@ -151,5 +131,3 @@ class PromptGenerator:
                 print(f"[提示词生成] 第 {i+1}/{len(items)} 段的图片提示词已生成")
             except Exception as e:
                 print(f"[提示词生成] 生成第 {i+1} 段提示词失败: {e}")
-                # 使用默认提示词
-                item['Prompt'] = f"9:16 vertical illustration, {subtitle}, detailed, high quality"
