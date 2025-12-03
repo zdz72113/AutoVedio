@@ -104,7 +104,7 @@ class PromptGenerator:
                 continue
             
             # 生成图片提示词
-            prompt_request = f"""请为以下视频内容生成一个详细的图片生成提示词（英文）。
+            prompt_request = f"""请为以下视频内容生成一个详细的图片生成提示词（中文）。
 
 标题：{title}
 字幕：{subtitle}
@@ -112,7 +112,6 @@ class PromptGenerator:
 要求：
 - 提示词要详细描述画面内容
 - 风格要统一，适合视频内容
-- 使用中文描述
 
 只返回提示词内容，不要包含其他说明。"""
             
