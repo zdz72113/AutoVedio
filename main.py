@@ -71,7 +71,9 @@ def main(json_file_path):
             pass
     
     # 如果没有已有数据，生成新的脚本
-    if not items or len(items) != config['images']:
+    # 注意：generate_video_script 会生成 1个封面 + config['images'] 个内容段
+    expected_total = config['images'] + 1  # 封面 + 内容段
+    if not items or len(items) != expected_total:
         items = prompt_gen.generate_video_script(config['text'], config['images'])
         # 保存初始脚本
         save_items_to_json(items, output_json_path)
@@ -80,7 +82,10 @@ def main(json_file_path):
     print("\n" + "=" * 60)
     print("步骤 2/6: 生成图片提示词")
     print("=" * 60)
-    prompt_gen.generate_image_prompts(items)
+    # 从配置中获取风格，默认为"动画"
+    style = config.get('style', '动画')
+    print(f"[配置] 图片风格: {style}")
+    prompt_gen.generate_image_prompts(items, text=config.get('text'), style=style)
     save_items_to_json(items, output_json_path)
     
     # 6. 生成图片
