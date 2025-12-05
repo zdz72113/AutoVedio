@@ -82,10 +82,7 @@ def main(json_file_path):
     print("\n" + "=" * 60)
     print("步骤 2/6: 生成图片提示词")
     print("=" * 60)
-    # 从配置中获取风格，默认为"动画"
-    style = config.get('style', '动画')
-    print(f"[配置] 图片风格: {style}")
-    prompt_gen.generate_image_prompts(items, text=config.get('text'), style=style)
+    prompt_gen.generate_image_prompts(items, text=config.get('text'), style=config['style'])
     save_items_to_json(items, output_json_path)
     
     # 6. 生成图片

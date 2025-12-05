@@ -24,10 +24,12 @@ class PromptGenerator:
     STYLE_DESCRIPTIONS = STYLE_DESCRIPTIONS
     
     def __init__(self):
+        """初始化DeepSeek客户端"""
         self.client = OpenAI(
             api_key=Config.DEEPSEEK_API_KEY,
             base_url=Config.DEEPSEEK_BASE_URL
         )
+        self.model = "deepseek-chat"
     
     @classmethod
     def get_available_styles(cls):
@@ -71,7 +73,7 @@ class PromptGenerator:
             cover_prompt = get_cover_prompt_template(text)
             
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=self.model,
                 messages=[
                     {"role": "user", "content": cover_prompt}
                 ],
@@ -110,7 +112,7 @@ class PromptGenerator:
             
             print(f"[脚本生成] 正在生成{num_segments}段视频脚本...")
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=self.model,
                 messages=[
                     {"role": "user", "content": script_prompt}
                 ],
@@ -173,7 +175,7 @@ class PromptGenerator:
         try:
             print(f"[统一风格] 正在生成统一风格提示词（风格：{style}）...")
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=self.model,
                 messages=[
                     {"role": "user", "content": unified_prompt_request}
                 ],
@@ -246,7 +248,7 @@ class PromptGenerator:
             
             try:
                 response = self.client.chat.completions.create(
-                    model="deepseek-chat",
+                    model=self.model,
                     messages=[
                         {"role": "user", "content": prompt_request}
                     ],

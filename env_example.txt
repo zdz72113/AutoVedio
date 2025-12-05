@@ -1,14 +1,11 @@
-# DeepSeek API配置
+# DeepSeek API配置，用于文本生成
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
-# 火山引擎API配置
+# 火山引擎API配置，用于图片生成
 ARK_API_KEY=your_ark_api_key_here
 
-# 阿里云DashScope API配置（可选，与Azure二选一即可）
-DASHSCOPE_API_KEY=your_dashscope_api_key_here
-
-# Azure语音服务配置（可选，与DashScope二选一即可）
+# Azure语音服务配置，用于语音合成
 AZURE_SPEECH_KEY=your_azure_speech_key_here
 AZURE_SPEECH_REGION=your_azure_speech_region_here
 # Azure语音名称，可选，默认为zh-CN-XiaoxiaoNeural

@@ -14,7 +14,7 @@ def load_input_config(json_file_path):
         json_file_path: JSON文件路径
     
     返回:
-        dict: 配置字典，包含 video_size, images, voice, font, font_color, font_size, name, text
+        dict: 配置字典，包含 video_size, images, voice, font, font_color, font_size, name, text, style
     """
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
@@ -40,10 +40,11 @@ def load_input_config(json_file_path):
             'font_color': data['font_color'],
             'font_size': data['font_size'],
             'name': data['name'],
-            'text': data['text']
+            'text': data['text'],
+            'style': data.get('style', '插画') 
         }
         
-        print(f"[工具] 从 {json_file_path} 加载配置: name={config['name']}, images={config['images']}")
+        print(f"[工具] 从 {json_file_path} 加载配置: name={config['name']}, images={config['images']}, style={config['style']}")
         return config
     except Exception as e:
         print(f"[工具] 加载输入配置失败: {e}")
