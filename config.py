@@ -18,10 +18,7 @@ class Config:
     
     # 火山引擎配置
     ARK_API_KEY = os.getenv('ARK_API_KEY', '')
-    
-    # 阿里云DashScope配置
-    DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY', '')
-    
+
     # Azure语音服务配置
     AZURE_SPEECH_KEY = os.getenv('AZURE_SPEECH_KEY', '')
     AZURE_SPEECH_REGION = os.getenv('AZURE_SPEECH_REGION', '')
@@ -35,11 +32,10 @@ class Config:
             missing.append('DEEPSEEK_API_KEY')
         if not cls.ARK_API_KEY:
             missing.append('ARK_API_KEY')
-        # Azure和DashScope至少需要一个
-        if not cls.DASHSCOPE_API_KEY and not cls.AZURE_SPEECH_KEY:
-            missing.append('DASHSCOPE_API_KEY 或 AZURE_SPEECH_KEY（至少需要一个）')
-        if cls.AZURE_SPEECH_KEY and not cls.AZURE_SPEECH_REGION:
-            missing.append('AZURE_SPEECH_REGION（使用Azure时需要）')
+        if not cls.AZURE_SPEECH_KEY:
+            missing.append('DASHSCOPE_API_KEY')
+        if not cls.AZURE_SPEECH_REGION:
+            missing.append('AZURE_SPEECH_REGION')
         
         if missing:
             raise ValueError(f"缺少必需的配置项: {', '.join(missing)}。请检查.env文件。")
