@@ -69,10 +69,12 @@ def generate_audio_for_items(items, voice_name, audio_dir):
         voice_name: 语音名称（从input配置中获取）
         audio_dir: 音频文件保存目录
     """
+    audio_index = 1
     for i, item in enumerate(items):
         # 如果已有audio，跳过
         if item.get('audio'):
             print(f"[语音生成] 第 {i+1}/{len(items)} 项已有音频，跳过")
+            audio_index += 1
             continue
         
         subtitle = item.get('subtitle', '') or ''
@@ -81,13 +83,19 @@ def generate_audio_for_items(items, voice_name, audio_dir):
             print(f"[警告] 第 {i+1} 项缺少subtitle，跳过语音生成")
             continue
         
-        audio_file = os.path.join(audio_dir, f"audio_{i+1}.mp3")
+        # 如果item有_split_index标记且不为None，使用它；否则使用audio_index
+        split_index = item.get('_split_index')
+        if split_index:
+            audio_file = os.path.join(audio_dir, f"audio_{split_index}.mp3")
+        else:
+            audio_file = os.path.join(audio_dir, f"audio_{audio_index}.mp3")
+            audio_index += 1
         
         try:
             # 生成语音
             text_to_speech(subtitle, audio_file, voice_name=voice_name)
             item['audio'] = audio_file
-            print(f"[语音生成] 第 {i+1}/{len(items)} 段语音已生成")
+            print(f"[语音生成] 第 {i+1}/{len(items)} 段语音已生成: {os.path.basename(audio_file)}")
         except Exception as e:
             print(f"[错误] 生成第 {i+1} 段语音失败: {e}")
             continue

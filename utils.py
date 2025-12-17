@@ -93,6 +93,28 @@ def save_items_to_json(items, json_file_path):
         raise
 
 
+def clean_items_for_first_json(items):
+    """
+    清理items，只保留title, subtitle, Prompt, Image字段
+    
+    参数:
+        items: 项目列表
+    
+    返回:
+        list: 清理后的项目列表
+    """
+    cleaned_items = []
+    for item in items:
+        cleaned_item = {
+            'title': item.get('title', ''),
+            'subtitle': item.get('subtitle', ''),
+            'Prompt': item.get('Prompt', ''),
+            'Image': item.get('Image', '')
+        }
+        cleaned_items.append(cleaned_item)
+    return cleaned_items
+
+
 def calculate_audio_duration(audio_file):
     """
     计算音频文件的时长
@@ -220,4 +242,115 @@ def generate_output_filename(name, temp_dir):
     
     filename = f"{name}_{timestamp}.mp4"
     return os.path.join(temp_dir, filename)
+
+
+def split_text_by_length(text, max_chars=50):
+    """
+    智能拆分文本，先按句号、问号、感叹号拆分，如果某段还是太长，按逗号拆分
+    
+    参数:
+        text: 要拆分的文本
+        max_chars: 最大字符数，默认50
+    
+    返回:
+        list: 拆分后的文本段列表
+    """
+    if not text or len(text) <= max_chars:
+        return [text]
+    
+    import re
+    
+    # 第一步：按句号、问号、感叹号拆分
+    sentences = re.split(r'([。！？])', text)
+    # 重新组合句子和标点
+    parts = []
+    for i in range(0, len(sentences), 2):
+        if i + 1 < len(sentences):
+            parts.append(sentences[i] + sentences[i + 1])
+        elif sentences[i].strip():
+            parts.append(sentences[i])
+    
+    # 过滤空字符串
+    parts = [p.strip() for p in parts if p.strip()]
+    
+    # 第二步：检查每段长度，如果还是太长，按逗号拆分
+    result = []
+    for part in parts:
+        if len(part) <= max_chars:
+            result.append(part)
+        else:
+            # 按逗号、分号拆分
+            sub_parts = re.split(r'([，；])', part)
+            current = ""
+            for i in range(0, len(sub_parts), 2):
+                segment = sub_parts[i]
+                if i + 1 < len(sub_parts):
+                    segment += sub_parts[i + 1]
+                
+                if len(current + segment) <= max_chars:
+                    current += segment
+                else:
+                    if current:
+                        result.append(current.strip())
+                    current = segment
+                    # 如果单个segment就超过max_chars，强制拆分
+                    while len(current) > max_chars:
+                        result.append(current[:max_chars])
+                        current = current[max_chars:]
+            
+            if current:
+                result.append(current.strip())
+    
+    return [r for r in result if r]
+
+
+def split_item_if_needed(item, max_chars=50):
+    """
+    如果需要，拆分item的subtitle
+    
+    参数:
+        item: 原始item
+        max_chars: 最大字符数，默认50
+    
+    返回:
+        list: 拆分后的item列表（如果不需要拆分，返回包含原item的列表）
+    """
+    subtitle = item.get('subtitle', '')
+    if not subtitle or len(subtitle) <= max_chars:
+        return [item]
+    
+    # 拆分subtitle
+    split_subtitles = split_text_by_length(subtitle, max_chars)
+    
+    # 如果只拆分成一段，返回原item
+    if len(split_subtitles) <= 1:
+        return [item]
+    
+    # 创建多个item，共享原item的其他字段
+    split_items = []
+    # 尝试从audio文件名中提取基础索引
+    audio_path = item.get('audio', '')
+    base_index = None
+    if audio_path:
+        import re
+        audio_filename = audio_path.replace('\\', '/').split('/')[-1]
+        match = re.search(r'audio_(\d+)', audio_filename)
+        if match:
+            base_index = match.group(1)
+    
+    for i, sub_subtitle in enumerate(split_subtitles):
+        new_item = item.copy()
+        new_item['subtitle'] = sub_subtitle
+        # 清除原有的audio和duration，需要重新生成
+        new_item.pop('audio', None)
+        new_item.pop('duration', None)
+        # 标记这是拆分后的item（用于后续生成audio时的命名）
+        if base_index is not None:
+            new_item['_split_index'] = f"{base_index}_{i+1}"
+        else:
+            # 如果没有基础索引，使用临时标记，后续会按顺序生成
+            new_item['_split_index'] = None
+        split_items.append(new_item)
+    
+    return split_items
 

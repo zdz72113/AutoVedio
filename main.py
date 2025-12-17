@@ -15,7 +15,9 @@ from utils import (
     create_temp_dir,
     generate_slide_list_from_items,
     generate_output_filename,
-    calculate_audio_duration
+    calculate_audio_duration,
+    split_item_if_needed,
+    clean_items_for_first_json
 )
 from video_generator import VideoGenerator
 
@@ -57,7 +59,7 @@ def main(json_file_path):
     
     # 4. 生成视频脚本（包含title和subtitle）
     print("\n" + "=" * 60)
-    print("步骤 1/6: 生成视频脚本")
+    print("步骤 1/8: 生成视频脚本")
     print("=" * 60)
     prompt_gen = PromptGenerator()
     
@@ -80,14 +82,14 @@ def main(json_file_path):
     
     # 5. 生成图片提示词
     print("\n" + "=" * 60)
-    print("步骤 2/6: 生成图片提示词")
+    print("步骤 2/8: 生成图片提示词")
     print("=" * 60)
     prompt_gen.generate_image_prompts(items, text=config.get('text'), style=config['style'])
     save_items_to_json(items, output_json_path)
     
     # 6. 生成图片
     print("\n" + "=" * 60)
-    print("步骤 3/6: 生成图片")
+    print("步骤 3/8: 生成图片")
     print("=" * 60)
     image_gen = ImageGenerator()
     
@@ -99,20 +101,43 @@ def main(json_file_path):
         image_size = "1080x1920"
     
     image_gen.generate_images_batch(items, image_dir, image_size=image_size)
-    save_items_to_json(items, output_json_path)
     
-    # 7. 生成语音
+    # 6.5. 保存第一个JSON文件（只包含title, subtitle, Prompt, Image）
     print("\n" + "=" * 60)
-    print("步骤 4/6: 生成语音")
+    print("步骤 4/8: 保存第一个JSON文件")
     print("=" * 60)
-    generate_audio_for_items(items, config['voice'], audio_dir)
-    save_items_to_json(items, output_json_path)
+    cleaned_items = clean_items_for_first_json(items)
+    save_items_to_json(cleaned_items, output_json_path)
+    print(f"[保存] 第一个JSON文件已保存到: {output_json_path}（只包含title, subtitle, Prompt, Image）")
     
-    # 8. 计算时长并更新到items中
+    # 7. 拆分过长的subtitle（基于第一个JSON文件）
     print("\n" + "=" * 60)
-    print("步骤 5/6: 计算时长")
+    print("步骤 5/8: 拆分过长的内容")
     print("=" * 60)
-    for i, item in enumerate(items):
+    split_items = []
+    for i, item in enumerate(cleaned_items):
+        split_result = split_item_if_needed(item, max_chars=50)
+        if len(split_result) > 1:
+            print(f"[拆分] 第 {i+1} 项拆分为 {len(split_result)} 段")
+        split_items.extend(split_result)
+    
+    # 保存拆分后的JSON到新文件
+    split_json_path = os.path.join(temp_dir, f"{config['name']}_split.json")
+    save_items_to_json(split_items, split_json_path)
+    print(f"[保存] 拆分后的JSON已保存到: {split_json_path}")
+    
+    # 8. 为拆分后的新items生成语音
+    print("\n" + "=" * 60)
+    print("步骤 6/8: 为拆分后的内容生成语音")
+    print("=" * 60)
+    generate_audio_for_items(split_items, config['voice'], audio_dir)
+    save_items_to_json(split_items, split_json_path)
+    
+    # 9. 计算时长并更新到split_items中
+    print("\n" + "=" * 60)
+    print("步骤 7/8: 计算时长")
+    print("=" * 60)
+    for i, item in enumerate(split_items):
         if item.get('audio') and (not item.get('duration') or item.get('duration') == 0):
             duration = calculate_audio_duration(item['audio'])
             if duration > 0:
@@ -122,14 +147,14 @@ def main(json_file_path):
                 item['duration'] = 3.0  # 默认时长
                 print(f"[时长计算] 第 {i+1} 项：使用默认时长 3.0 秒")
     
-    save_items_to_json(items, output_json_path)
+    save_items_to_json(split_items, split_json_path)
     
-    # 9. 生成幻灯片列表
+    # 10. 生成幻灯片列表（基于拆分后的JSON文件）
     print("\n" + "=" * 60)
-    print("步骤 6/6: 生成视频")
+    print("步骤 8/8: 生成视频")
     print("=" * 60)
     try:
-        slides = generate_slide_list_from_items(items)
+        slides = generate_slide_list_from_items(split_items)
         if not slides:
             print("[错误] 没有有效的幻灯片")
             return
@@ -137,7 +162,7 @@ def main(json_file_path):
         print(f"[错误] 生成幻灯片列表失败: {e}")
         return
     
-    # 10. 生成视频
+    # 11. 生成视频
     video_size = config['video_size']
     if isinstance(video_size, list):
         video_size = tuple(video_size)
@@ -164,7 +189,8 @@ def main(json_file_path):
     print(f"\n✅ 视频生成完成！")
     print(f"📁 输出文件: {output_file}")
     print(f"📁 临时文件: {temp_dir}")
-    print(f"📁 JSON文件: {output_json_path}")
+    print(f"📁 第一个JSON文件: {output_json_path}")
+    print(f"📁 拆分后的JSON文件: {split_json_path}")
     print("\n" + "=" * 60)
 
 

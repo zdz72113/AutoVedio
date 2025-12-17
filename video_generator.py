@@ -112,8 +112,10 @@ class VideoGenerator:
                 ).with_duration(slide["duration"])
                 
                 # 创建半透明深色背景，增强对比度
+                # 增加额外高度以容纳描边和确保最后一行完整显示
+                extra_height = self.stroke_width * 2 + 10  # 描边上下各占stroke_width，额外10像素缓冲
                 title_bg = ColorClip(
-                    size=(title_text_clip.w + self.bg_padding * 2, title_text_clip.h + self.bg_padding * 2),
+                    size=(title_text_clip.w + self.bg_padding * 2, title_text_clip.h + self.bg_padding * 2 + extra_height),
                     color=(20, 20, 20),  # 深灰色背景，比纯黑更柔和
                     duration=slide["duration"]
                 ).with_opacity(0.8)  # 稍微提高不透明度，使背景更明显
@@ -143,8 +145,10 @@ class VideoGenerator:
                 ).with_duration(slide["duration"])
                 
                 # 创建半透明背景
+                # 增加额外高度以容纳描边和确保最后一行完整显示
+                extra_height = self.stroke_width * 2 + 10  # 描边上下各占stroke_width，额外10像素缓冲
                 subtitle_bg = ColorClip(
-                    size=(subtitle_text_clip.w + self.bg_padding * 2, subtitle_text_clip.h + self.bg_padding * 2),
+                    size=(subtitle_text_clip.w + self.bg_padding * 2, subtitle_text_clip.h + self.bg_padding * 2 + extra_height),
                     color=(0, 0, 0),  # 黑色背景
                     duration=slide["duration"]
                 ).with_opacity(self.bg_opacity)  # 半透明背景
